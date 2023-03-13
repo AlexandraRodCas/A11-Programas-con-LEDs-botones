@@ -73,7 +73,7 @@ void loop() {
 */
 void apagaLED(int pin) {
   // Apaga el LED
-  digitalWrite(pin, LOW);
+  digitalWrite(pin, HIGH);
   // Actualiza la variable que guarda el estado del LED
   edoLed = LED_APAGADO;
 }
@@ -84,7 +84,7 @@ void apagaLED(int pin) {
 */
 void enciendeLED(int pin) {
   // Enciende el LED
-  digitalWrite(pin, HIGH);
+  digitalWrite(pin, LOW);
   // Actualiza la variable que guarda el estado del LED
   edoLed = LED_ENCENDIDO;
 }
