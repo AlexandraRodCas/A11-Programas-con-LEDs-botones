@@ -15,7 +15,13 @@ const unsigned int CT_MIN = 0;
 const unsigned int CT_MAX = 255;
 
 // Ciclo de trabajo de la forma de onda PWM
-unsigned int cicloTrabajo;
+unsigned int contadorA;
+unsigned int contadorB;
+
+
+// Ciclo de trabajo de la forma de onda PWM
+unsigned int cicloTrabajoA;
+unsigned int cicloTrabajoB;
 // Incremento/decremento en el ciclo de trabajo
 unsigned int paso;
 
@@ -39,6 +45,7 @@ void encenderBApagarA();
 void disminuirBAumentarA();
 
 void setup() {
+  Serial.begin(9600);
   // Establece el pin PIN_LED (GPIO2) como de salida.
   pinMode(PIN_LEDB, OUTPUT);
   // Establece el pin PIN_BOTON (GPIO4) como de entrada.
@@ -74,13 +81,21 @@ void loop() {
   int valorB = debouncerB.read();
   int valorA = debouncerA.read();
 
+  if(valorB == HIGH){
+    contadorB += 1;
+  }
+
+  if(valorA == HIGH){
+    contadorA += 1;
+  }
+
   switch (edoLed) {
     case LEDA_ON_LEDB_OFF:
       if (valorB ==  HIGH) disminuirAAumentarB(PIN_LEDA, PIN_LEDB);
       break;
     case LEDA_ON_LEDB_ON:
-      if (valorB ==  HIGH) encenderBApagarA(PIN_LEDA, PIN_LEDB);
-      if (valorA ==  HIGH) apagarBEncenderA(PIN_LEDA, PIN_LEDB);
+      if (valorB ==  HIGH) disminuirAAumentarB(PIN_LEDA, PIN_LEDB);
+      if (valorA ==  HIGH) disminuirBAumentarA(PIN_LEDA, PIN_LEDB);
       break;
     case LEDA_OFF_LEDB_ON:
       if (valorB == HIGH) disminuirBAumentarA(PIN_LEDA, PIN_LEDB);
@@ -92,19 +107,44 @@ void loop() {
   También actualiza la variable edoLed al valor LEDA_ON_LEDB_OFF
 */
 void apagarBEncenderA(int pinA, int pinB) {
+  cicloTrabajoA = CT_MAX;
+  cicloTrabajoB = CT_MIN;
+
   // Enciende el LEDA
-  digitalWrite(pinA, HIGH);
+  analogWrite(pinA, cicloTrabajoA);
+
   // Apaga el LEDB
-  digitalWrite(pinB, LOW);
+  analogWrite(pinB, cicloTrabajoB);
   // Actualiza la variable que guarda el estado del LED
   edoLed = LEDA_ON_LEDB_OFF;
 }
 
 void disminuirAAumentarB(int pinA, int pinB) {
-  // Enciende el LEDB con un ciclo de trabajo del 50%
-  analogWrite(pinB, 127);
-  // Apaga el LEDA
-  digitalWrite(pinA, 127);
+  
+  cicloTrabajoB += (contadorB*1);
+  cicloTrabajoA = cicloTrabajoA - (contadorB*1);
+  
+  if(cicloTrabajoA>23){
+     // Apaga el LEDA
+    analogWrite(pinA, cicloTrabajoA);
+  }
+  else{
+    cicloTrabajoA = CT_MIN;
+    analogWrite(pinA, CT_MIN);
+  }
+
+  if(cicloTrabajoB<230){
+     // Apaga el LEDB
+    analogWrite(pinB, cicloTrabajoB);
+  }
+  else{
+    cicloTrabajoB = CT_MAX;
+    analogWrite(pinB, CT_MAX);
+  }
+  Serial.println(cicloTrabajoB);
+  Serial.println(cicloTrabajoA);
+  Serial.println("en el disminuirAAumentarB ");
+
   edoLed = LEDA_ON_LEDB_ON;
 }
 
@@ -113,18 +153,42 @@ void disminuirAAumentarB(int pinA, int pinB) {
   También actualiza la variable edoLed al valor LEDA_OFF_LEDB_ON
 */
 void encenderBApagarA(int pinA, int pinB) {
+  cicloTrabajoB = CT_MAX;
+  cicloTrabajoA = CT_MIN;
+  
   // Enciende el LEDB
-  digitalWrite(pinB, HIGH);
+  analogWrite(pinB, cicloTrabajoA);
   // Apaga el LEDA
-  digitalWrite(pinA, LOW);
+  analogWrite(pinA, cicloTrabajoB);
   // Actualiza la variable que guarda el estado del LED
   edoLed = LEDA_OFF_LEDB_ON;
+  
 }
 
 void disminuirBAumentarA(int pinA, int pinB) {
-  // Enciende el LEDA con un ciclo de trabajo del 50%
-  analogWrite(pinA, 127);
-  // Apaga el LEDB
-  digitalWrite(pinB, 127);
-  edoLed = LEDA_ON_LEDB_OFF;
+  cicloTrabajoA += (contadorA*1);
+  cicloTrabajoB = cicloTrabajoB - (contadorA*1);
+  
+  if(cicloTrabajoB>23){
+     // Apaga el LEDA
+    analogWrite(pinB, cicloTrabajoB);
+  }
+  else{
+    cicloTrabajoB = CT_MIN;
+    analogWrite(pinB, CT_MIN);
+  }
+
+  if(cicloTrabajoA<230){
+     // Apaga el LEDB
+    analogWrite(pinA, cicloTrabajoA);
+  }
+  else{
+    cicloTrabajoA = CT_MAX;
+    analogWrite(pinA, CT_MAX);
+  }
+  Serial.println(cicloTrabajoB);
+  Serial.println(cicloTrabajoA);
+  Serial.println("en el disminuirAAumentarB ");
+
+  edoLed = LEDA_ON_LEDB_ON;
 }
