@@ -1,18 +1,21 @@
 #include <Bounce2.h>
+#include <analogWrite.h>
 // Pin a la que esta conectado el interruptor, GPIO14
 const unsigned int PIN_BOTONB = 14;
 // Pin a la que esta conectado el LED, GPIO12
-const unsigned int PIN_LEDB = 13;
+const unsigned int PIN_LEDB = 16;
 
 // Pin a la que esta conectado el interruptor, GPIO4
 const unsigned int PIN_BOTONA = 4;
 // Pin a la que esta conectado el LED, GPIO2
-const unsigned int PIN_LEDA = 2;
+const unsigned int PIN_LEDA = 17;
 
 // Valor minimo del ciclo de trabajo
 const unsigned int CT_MIN = 0;
 // Valor maximo del ciclo de trabajo. 2**RESOLUCION - 1
 const unsigned int CT_MAX = 255;
+// Valor que se le disminuirá al ciclo de trabajo.
+const unsigned int CT_MENOS = 1;
 
 // Ciclo de trabajo de la forma de onda PWM
 unsigned int contadorA;
@@ -81,28 +84,23 @@ void loop() {
   int valorB = debouncerB.read();
   int valorA = debouncerA.read();
 
-  if(valorB == HIGH){
-    contadorB += 1;
-  }
 
-  if(valorA == HIGH){
-    contadorA += 1;
-  }
+
 
   switch (edoLed) {
     case LEDA_ON_LEDB_OFF:
-      if(valorB == HIGH) Serial.println("Intensidad máxima del ledA");
-      if (valorA ==  HIGH) disminuirAAumentarB(PIN_LEDA, PIN_LEDB);
+      if (valorB == HIGH) Serial.println("Intensidad máxima led A");
+      if (valorA == HIGH) disminuirAAumentarB(PIN_LEDA, PIN_LEDB);
       break;
     case LEDA_ON_LEDB_ON:
-      if (valorB ==  HIGH && cicloTrabajoB != 0) disminuirBAumentarA(PIN_LEDA, PIN_LEDB);
-      if (valorB ==  HIGH && cicloTrabajoB == 0) apagarBEncenderA(PIN_LEDA, PIN_LEDB);
-      if (valorA ==  HIGH && cicloTrabajoA != 0) disminuirAAumentarB(PIN_LEDA, PIN_LEDB);
-      if (valorA ==  HIGH && cicloTrabajoA == 0) encenderBApagarA(PIN_LEDA, PIN_LEDB);
+      if (valorB == HIGH && cicloTrabajoB != 0) disminuirBAumentarA(PIN_LEDA, PIN_LEDB);
+      if (valorB == HIGH && cicloTrabajoB == 0) apagarBEncenderA(PIN_LEDA, PIN_LEDB);
+      if (valorA == HIGH && cicloTrabajoA != 0) disminuirAAumentarB(PIN_LEDA, PIN_LEDB);
+      if (valorA == HIGH && cicloTrabajoA == 0) encenderBApagarA(PIN_LEDA, PIN_LEDB);
       break;
     case LEDA_OFF_LEDB_ON:
-      if(valorA == HIGH) Serial.println("Intensidad máxima del ledB");
-      if (valorB ==  HIGH) disminuirBAumentarA(PIN_LEDA, PIN_LEDB);
+      if (valorA == HIGH) Serial.println("Intensidad máxima led B");
+      if (valorB == HIGH) disminuirBAumentarA(PIN_LEDA, PIN_LEDB);
   }
 }
 
@@ -111,8 +109,11 @@ void loop() {
   También actualiza la variable edoLed al valor LEDA_ON_LEDB_OFF
 */
 void apagarBEncenderA(int pinA, int pinB) {
+  // Se inicializan los ciclos de trabajos
   cicloTrabajoA = CT_MAX;
   cicloTrabajoB = CT_MIN;
+
+  // Se reinicia los contadores
   contadorA = 0;
   contadorB = 0;
 
@@ -122,37 +123,48 @@ void apagarBEncenderA(int pinA, int pinB) {
   // Apaga el LEDB
   analogWrite(pinB, cicloTrabajoB);
 
+  // Imprime mensajes en la consola
   Serial.println(cicloTrabajoB);
   Serial.println(cicloTrabajoA);
   Serial.println("en el apagarBEncenderA ");
+
   // Actualiza la variable que guarda el estado del LED
   edoLed = LEDA_ON_LEDB_OFF;
 }
 
 void disminuirAAumentarB(int pinA, int pinB) {
-  if(cicloTrabajoA>23){
-    cicloTrabajoA = cicloTrabajoA - (contadorB*1);
-     // disminuye intensidad del LEDA
-    analogWrite(pinA, cicloTrabajoA);
-  }
-  else{
-    cicloTrabajoA = CT_MIN;
-    analogWrite(pinA, CT_MIN);
+  contadorB += 1;
+  if (contadorA > 0) {
+    contadorA -= 1;
   }
 
-  if(cicloTrabajoB<230){
-    cicloTrabajoB += (contadorB*1);
-     // Aumenta intensidad del LEDB
+  // Checa que el cicloTrabajoA sea mayor a 23
+  if (cicloTrabajoA > 23) {
+    cicloTrabajoA = cicloTrabajoA - (contadorB * CT_MENOS);
+    // disminuye intensidad del LEDA
+    analogWrite(pinA, cicloTrabajoA);
+  } else {
+    encenderBApagarA(pinA, pinB);
+  }
+
+  if (cicloTrabajoB < 230) {
+    cicloTrabajoB += (contadorB * CT_MENOS);
+    // Aumenta intensidad del LEDB
     analogWrite(pinB, cicloTrabajoB);
+  } else {
+    encenderBApagarA(pinA, pinB);
   }
-  else{
-    cicloTrabajoB = CT_MAX;
-    analogWrite(pinB, CT_MAX);
-  }
+
+  // Imprime mensajes en la consola
   Serial.println(cicloTrabajoB);
   Serial.println(cicloTrabajoA);
   Serial.println("en el disminuirAAumentarB ");
+  // Imprime mensajes en la consola
+  Serial.print("Contador B: ");
+  Serial.println(contadorB);
 
+
+  // Actualiza el estado del led
   edoLed = LEDA_ON_LEDB_ON;
 }
 
@@ -161,44 +173,55 @@ void disminuirAAumentarB(int pinA, int pinB) {
   También actualiza la variable edoLed al valor LEDA_OFF_LEDB_ON
 */
 void encenderBApagarA(int pinA, int pinB) {
+  // Se inicializan los ciclos de trabajos
   cicloTrabajoB = CT_MAX;
   cicloTrabajoA = CT_MIN;
+
+  // Se reinicia los contadores
   contadorB = 0;
   contadorA = 0;
-  
+
   // Enciende el LEDB
   analogWrite(pinB, cicloTrabajoB);
   // Apaga el LEDA
   analogWrite(pinA, cicloTrabajoA);
+
+  // Imprime mensajes en la consola
   Serial.println("en el encenderBApagarA ");
+
   // Actualiza la variable que guarda el estado del LED
   edoLed = LEDA_OFF_LEDB_ON;
-  
 }
 
 void disminuirBAumentarA(int pinA, int pinB) {
-  if(cicloTrabajoB>23){
-    cicloTrabajoB = cicloTrabajoB - (contadorA*1);
-     // Apaga el LEDA
-    analogWrite(pinB, cicloTrabajoB);
-  }
-  else{
-    cicloTrabajoB = CT_MIN;
-    analogWrite(pinB, CT_MIN);
+  contadorA += 1;
+  if (contadorB > 0) {
+    contadorB -= 1;
   }
 
-  if(cicloTrabajoA<230){
-    cicloTrabajoA += (contadorA*1);
-     // Apaga el LEDB
+  if (cicloTrabajoB > 23) {
+    cicloTrabajoB = cicloTrabajoB - (contadorA * CT_MENOS);
+    // Apaga el LEDA
+    analogWrite(pinB, cicloTrabajoB);
+  } else {
+    apagarBEncenderA(pinA, pinB);
+  }
+
+  if (cicloTrabajoA < 230) {
+    cicloTrabajoA += (contadorA * CT_MENOS);
+    // Apaga el LEDB
     analogWrite(pinA, cicloTrabajoA);
+  } else {
+    apagarBEncenderA(pinA, pinB);
   }
-  else{
-    cicloTrabajoA = CT_MAX;
-    analogWrite(pinA, CT_MAX);
-  }
+
+  // Imprime mensajes en la consola
   Serial.println(cicloTrabajoB);
   Serial.println(cicloTrabajoA);
+  Serial.print("Contador A: ");
+  Serial.println(contadorA);
   Serial.println("en el disminuirBAumentarA ");
 
+  // Actualiza el estado del led
   edoLed = LEDA_ON_LEDB_ON;
 }
